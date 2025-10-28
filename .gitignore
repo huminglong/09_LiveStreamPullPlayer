@@ -1,3 +1,4 @@
 doc/
 build/
 build_qt/
+CMakeLists.txt.user

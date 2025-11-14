@@ -26,9 +26,11 @@
 #include <QByteArray>
 #include <QImage>
 #include <QString>
+class QTimer;
 class QUrl;
 
 #include <atomic>
+#include <future>
 #include <mutex>
 #include <thread>
 
@@ -215,6 +217,16 @@ private:
      */
     static QString urlSchemeLower(const QString& url);
 
+    /**
+     * @brief 实际的阻塞停止实现，由异步封装调用。
+     */
+    void stopInternal();
+
+    /**
+     * @brief 等待异步停止任务完成，避免资源竞争。
+     */
+    void waitForShutdownCompletion();
+
     std::thread m_demuxThread;
     std::thread m_videoThread;
     std::thread m_audioThread;
@@ -241,6 +253,7 @@ private:
 
     QAudioOutput* m_audioOutput = nullptr;
     QIODevice* m_audioDevice = nullptr;
+    QTimer* m_statsTimer = nullptr;
 
     std::atomic<double> m_bitrateKbps{ 0.0 };
     QString m_currentUrl;
@@ -248,6 +261,10 @@ private:
     // Reconnect configuration
     std::atomic<int> m_maxReconnectAttempts{ 5 };
     std::atomic<int> m_reconnectDelayMs{ 2000 };
+
+    std::shared_future<void> m_shutdownFuture;
+    mutable std::mutex m_shutdownMutex;
+    std::atomic_bool m_stopInProgress{ false };
 };
 
 #endif // LIVESTREAMPLAYER_H

@@ -31,11 +31,17 @@ extern "C"
  */
 class PacketQueue {
 public:
+    enum class OverflowPolicy {
+        Block,
+        DropOldest
+    };
+
     /**
      * @brief 构造函数，可指定最大包数量。
      * @param maxPackets 队列容量。
+     * @param policy 队列写满时的溢出策略。
      */
-    explicit PacketQueue(size_t maxPackets = 120);
+    explicit PacketQueue(size_t maxPackets = 120, OverflowPolicy policy = OverflowPolicy::Block);
 
     /**
      * @brief 析构函数，负责清理资源。
@@ -98,6 +104,7 @@ private:
     std::deque<AVPacket> m_queue;
     size_t m_maxSize;
     bool m_closed;
+    OverflowPolicy m_policy;
 };
 
 #endif // PACKETQUEUE_H

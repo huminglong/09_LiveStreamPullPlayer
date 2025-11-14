@@ -31,7 +31,7 @@ VideoWidget::VideoWidget(QWidget* parent)
 void VideoWidget::updateFrame(const QImage& frame) {
     {
         QMutexLocker locker(&m_mutex);
-        m_frame = frame.copy();
+        m_frame = frame;
     }
     update();
 }

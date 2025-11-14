@@ -19,6 +19,7 @@
 #include <QAudioDeviceInfo>
 #include <QMetaObject>
 #include <QThread>
+#include <QTimer>
 #include <QtGlobal>
 
 #include <algorithm>
@@ -100,12 +101,18 @@ static inline int ff_channel_layout_default_compat(AVChannelLayout* layout, int 
  */
 LiveStreamPlayer::LiveStreamPlayer(QObject* parent)
     : QObject(parent),
-    m_videoQueue(kQueueMaxPacketsVideo),
-    m_audioQueue(kQueueMaxPacketsAudio) {
+    m_videoQueue(kQueueMaxPacketsVideo, PacketQueue::OverflowPolicy::DropOldest),
+    m_audioQueue(kQueueMaxPacketsAudio, PacketQueue::OverflowPolicy::Block) {
     qRegisterMetaType<PlayerStats>("PlayerStats");
 
     static std::once_flag initFlag;
     std::call_once(initFlag, []() { avformat_network_init(); });
+
+    m_statsTimer = new QTimer(this);
+    m_statsTimer->setInterval(400);
+    m_statsTimer->setTimerType(Qt::TimerType::CoarseTimer);
+    connect(m_statsTimer, &QTimer::timeout, this, &LiveStreamPlayer::updateStats);
+    m_statsTimer->start();
 }
 
 /**
@@ -113,6 +120,7 @@ LiveStreamPlayer::LiveStreamPlayer(QObject* parent)
  */
 LiveStreamPlayer::~LiveStreamPlayer() {
     stop();
+    waitForShutdownCompletion();
 }
 
 /**
@@ -126,6 +134,7 @@ void LiveStreamPlayer::start(const QString& url) {
     }
 
     stop();
+    waitForShutdownCompletion();
 
     m_currentUrl = sanitizeInputUrl(url);
     m_videoQueue.clear();
@@ -148,6 +157,36 @@ void LiveStreamPlayer::start(const QString& url) {
  * @brief 停止所有线程、释放资源并重置状态。
  */
 void LiveStreamPlayer::stop() {
+    if (!m_running.load(std::memory_order_acquire) &&
+        !m_demuxThread.joinable() &&
+        !m_videoThread.joinable() &&
+        !m_audioThread.joinable()) {
+        return;
+    }
+
+    if (m_stopInProgress.exchange(true, std::memory_order_acq_rel)) {
+        if (thread() != QThread::currentThread()) {
+            waitForShutdownCompletion();
+        }
+        return;
+    }
+
+    auto shutdownTask = std::async(std::launch::async, [this]() {
+        stopInternal();
+        m_stopInProgress.store(false, std::memory_order_release);
+        }).share();
+
+        {
+            std::lock_guard<std::mutex> lock(m_shutdownMutex);
+            m_shutdownFuture = shutdownTask;
+        }
+
+        if (thread() != QThread::currentThread()) {
+            shutdownTask.wait();
+        }
+}
+
+void LiveStreamPlayer::stopInternal() {
     // Always perform full shutdown/cleanup even if m_running is already false
     m_running.store(false, std::memory_order_release);
     m_stopRequested.store(true, std::memory_order_release);
@@ -181,6 +220,18 @@ void LiveStreamPlayer::stop() {
     }
 
     emit statusChanged(QStringLiteral("Stopped"));
+}
+
+void LiveStreamPlayer::waitForShutdownCompletion() {
+    std::shared_future<void> futureCopy;
+    {
+        std::lock_guard<std::mutex> lock(m_shutdownMutex);
+        futureCopy = m_shutdownFuture;
+    }
+
+    if (futureCopy.valid()) {
+        futureCopy.wait();
+    }
 }
 
 /**
@@ -253,7 +304,6 @@ void LiveStreamPlayer::demuxLoop(QString url) {
                     if (!m_running.load()) {
                         break;
                     }
-                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
                     continue;
                 }
 
@@ -400,7 +450,7 @@ void LiveStreamPlayer::videoDecodeLoop() {
                     destData,
                     destLinesize);
 
-                frameImage = image.copy();
+                frameImage = image;
                 av_frame_unref(frame);
                 break;
             }

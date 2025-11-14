@@ -18,8 +18,8 @@
   * @brief 构造函数，初始化容量与关闭标志。
   * @param maxPackets 队列容量。
   */
-PacketQueue::PacketQueue(size_t maxPackets)
-    : m_maxSize(maxPackets), m_closed(false) {
+PacketQueue::PacketQueue(size_t maxPackets, OverflowPolicy policy)
+    : m_maxSize(maxPackets), m_closed(false), m_policy(policy) {
 }
 
 /**
@@ -37,6 +37,13 @@ PacketQueue::~PacketQueue() {
 void PacketQueue::setMaxSize(size_t maxPackets) {
     std::lock_guard<std::mutex> lock(m_mutex);
     m_maxSize = maxPackets;
+    if (m_policy == OverflowPolicy::DropOldest) {
+        while (m_queue.size() > m_maxSize) {
+            AVPacket dropped = m_queue.front();
+            m_queue.pop_front();
+            av_packet_unref(&dropped);
+        }
+    }
     m_cvNotFull.notify_all();
 }
 
@@ -48,10 +55,22 @@ void PacketQueue::setMaxSize(size_t maxPackets) {
  */
 bool PacketQueue::push(const AVPacket* packet, std::atomic_bool& running) {
     std::unique_lock<std::mutex> lock(m_mutex);
-    m_cvNotFull.wait(lock, [this, &running]() { return m_closed || m_queue.size() < m_maxSize || !running.load(); });
-
-    if (m_closed || !running.load()) {
-        return false;
+    if (m_policy == OverflowPolicy::Block) {
+        m_cvNotFull.wait(lock, [this, &running]() { return m_closed || m_queue.size() < m_maxSize || !running.load(); });
+        if (m_closed || !running.load()) {
+            return false;
+        }
+    }
+    else {
+        while (!m_closed && running.load() && m_queue.size() >= m_maxSize) {
+            // 丢弃最旧的包以控制延迟，避免生产者线程停顿
+            AVPacket dropped = m_queue.front();
+            m_queue.pop_front();
+            av_packet_unref(&dropped);
+        }
+        if (m_closed || !running.load()) {
+            return false;
+        }
     }
 
     AVPacket copy{};

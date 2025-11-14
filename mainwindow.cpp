@@ -1,3 +1,17 @@
+/**
+ * @file mainwindow.cpp
+ * @brief 实现主窗口界面逻辑与信号槽处理。
+ * @mainfunctions
+ *   - MainWindow::handleStart
+ *   - MainWindow::handleStop
+ *   - MainWindow::handleStatusChanged
+ *   - MainWindow::handleStatsUpdated
+ *   - MainWindow::handleError
+ *   - MainWindow::updateControlsForRunning
+ * @mainclasses
+ *   - MainWindow
+ */
+
 #include "mainwindow.h"
 
 #include "livestreamplayer.h"
@@ -11,30 +25,33 @@
 #include <QSpinBox>
 #include <QVBoxLayout>
 
-MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
-{
+ /**
+  * @brief 构造主窗口并设置所有界面元素。
+  * @param parent 父级 QWidget。
+  */
+MainWindow::MainWindow(QWidget* parent)
+    : QMainWindow(parent) {
     m_player = new LiveStreamPlayer(this);
 
-    auto *central = new QWidget(this);
+    auto* central = new QWidget(this);
     setCentralWidget(central);
 
-    auto *mainLayout = new QVBoxLayout(central);
+    auto* mainLayout = new QVBoxLayout(central);
 
-    auto *urlLayout = new QHBoxLayout();
-    auto *urlLabel = new QLabel(QStringLiteral("Stream URL:"), central);
+    auto* urlLayout = new QHBoxLayout();
+    auto* urlLabel = new QLabel(QStringLiteral("Stream URL:"), central);
     m_urlEdit = new QLineEdit(central);
     m_urlEdit->setPlaceholderText(QStringLiteral("rtsp:// or rtmp://"));
     urlLayout->addWidget(urlLabel);
     urlLayout->addWidget(m_urlEdit);
 
     // Settings row: max retries and retry delay
-    auto *settingsLayout = new QHBoxLayout();
-    auto *retryLabel = new QLabel(QStringLiteral("Max retries:"), central);
+    auto* settingsLayout = new QHBoxLayout();
+    auto* retryLabel = new QLabel(QStringLiteral("Max retries:"), central);
     m_retrySpin = new QSpinBox(central);
     m_retrySpin->setRange(0, 100);
     m_retrySpin->setValue(5);
-    auto *delayLabel = new QLabel(QStringLiteral("Retry delay (ms):"), central);
+    auto* delayLabel = new QLabel(QStringLiteral("Retry delay (ms):"), central);
     m_delaySpin = new QSpinBox(central);
     m_delaySpin->setRange(0, 60000);
     m_delaySpin->setSingleStep(100);
@@ -46,7 +63,7 @@ MainWindow::MainWindow(QWidget *parent)
     settingsLayout->addWidget(m_delaySpin);
     settingsLayout->addStretch();
 
-    auto *buttonLayout = new QHBoxLayout();
+    auto* buttonLayout = new QHBoxLayout();
     m_startButton = new QPushButton(QStringLiteral("Connect"), central);
     m_stopButton = new QPushButton(QStringLiteral("Disconnect"), central);
     m_stopButton->setEnabled(false);
@@ -78,24 +95,25 @@ MainWindow::MainWindow(QWidget *parent)
     resize(960, 640);
 }
 
-MainWindow::~MainWindow()
-{
-    if (m_player)
-    {
+/**
+ * @brief 析构函数，确保播放器在线程退出后释放。
+ */
+MainWindow::~MainWindow() {
+    if (m_player) {
         m_player->stop();
     }
 }
 
-void MainWindow::handleStart()
-{
-    if (!m_player)
-    {
+/**
+ * @brief 校验 URL 并启动播放器，应用重试设置。
+ */
+void MainWindow::handleStart() {
+    if (!m_player) {
         return;
     }
 
     const QString url = m_urlEdit->text().trimmed();
-    if (url.isEmpty())
-    {
+    if (url.isEmpty()) {
         QMessageBox::warning(this, QStringLiteral("Missing URL"), QStringLiteral("Please enter a valid RTSP or RTMP address."));
         return;
     }
@@ -110,10 +128,11 @@ void MainWindow::handleStart()
     m_player->start(url);
 }
 
-void MainWindow::handleStop()
-{
-    if (!m_player)
-    {
+/**
+ * @brief 停止播放器并重置按钮状态。
+ */
+void MainWindow::handleStop() {
+    if (!m_player) {
         return;
     }
 
@@ -122,38 +141,43 @@ void MainWindow::handleStop()
     m_statusLabel->setText(QStringLiteral("Stopped"));
 }
 
-void MainWindow::handleStatusChanged(const QString &statusText)
-{
-    if (!m_statusLabel)
-    {
+/**
+ * @brief 更新状态标签并在播放时锁定开始按钮。
+ * @param statusText 播放器状态文本。
+ */
+void MainWindow::handleStatusChanged(const QString& statusText) {
+    if (!m_statusLabel) {
         return;
     }
 
     m_statusLabel->setText(statusText);
-    if (statusText.compare(QStringLiteral("Playing"), Qt::CaseInsensitive) == 0)
-    {
+    if (statusText.compare(QStringLiteral("Playing"), Qt::CaseInsensitive) == 0) {
         updateControlsForRunning(true);
     }
 }
 
-void MainWindow::handleStatsUpdated(const PlayerStats &stats)
-{
-    if (!m_statsLabel)
-    {
+/**
+ * @brief 将统计数据格式化后展示。
+ * @param stats 播放器实时统计。
+ */
+void MainWindow::handleStatsUpdated(const PlayerStats& stats) {
+    if (!m_statsLabel) {
         return;
     }
 
     m_statsLabel->setText(QStringLiteral("Video queue: %1 | Audio queue: %2 | Bitrate: %3 kbps | Jitter: %4 ms")
-                              .arg(stats.videoQueueSize)
-                              .arg(stats.audioQueueSize)
-                              .arg(QString::number(stats.incomingBitrateKbps, 'f', 1))
-                              .arg(QString::number(stats.jitterBufferMs, 'f', 1)));
+        .arg(stats.videoQueueSize)
+        .arg(stats.audioQueueSize)
+        .arg(QString::number(stats.incomingBitrateKbps, 'f', 1))
+        .arg(QString::number(stats.jitterBufferMs, 'f', 1)));
 }
 
-void MainWindow::handleError(const QString &message)
-{
-    if (message.isEmpty())
-    {
+/**
+ * @brief 弹出错误对话框并恢复按钮状态。
+ * @param message 错误描述。
+ */
+void MainWindow::handleError(const QString& message) {
+    if (message.isEmpty()) {
         return;
     }
 
@@ -161,10 +185,12 @@ void MainWindow::handleError(const QString &message)
     updateControlsForRunning(false);
 }
 
-void MainWindow::updateControlsForRunning(bool running)
-{
-    if (!m_startButton || !m_stopButton)
-    {
+/**
+ * @brief 根据运行状态切换开始/停止按钮可用性。
+ * @param running 是否正在播放。
+ */
+void MainWindow::updateControlsForRunning(bool running) {
+    if (!m_startButton || !m_stopButton) {
         return;
     }
 

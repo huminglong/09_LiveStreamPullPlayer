@@ -1,10 +1,21 @@
+/**
+ * @file playerstats.h
+ * @brief 定义播放器统计信息结构体。
+ * @mainfunctions
+ *   - 无
+ * @mainclasses
+ *   - PlayerStats
+ */
+
 #ifndef PLAYERSTATS_H
 #define PLAYERSTATS_H
 
 #include <QMetaType>
 
-struct PlayerStats
-{
+ /**
+  * @brief PlayerStats 描述当前缓冲、码率与抖动数据。
+  */
+struct PlayerStats {
     int videoQueueSize = 0;
     int audioQueueSize = 0;
     double incomingBitrateKbps = 0.0;

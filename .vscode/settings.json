@@ -13,6 +13,7 @@
         "qlineedit": "cpp",
         "qvboxlayout": "cpp",
         "qspinbox": "cpp",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "qpixmap": "cpp"
     }
 }

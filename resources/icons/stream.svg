@@ -1,0 +1,8 @@
+<!-- 流媒体图标 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <circle cx="12" cy="12" r="2" fill="#2196F3"/>
+  <path fill="none" stroke="#2196F3" stroke-width="2" d="M8 8 Q6 10 6 12 Q6 14 8 16"/>
+  <path fill="none" stroke="#2196F3" stroke-width="2" d="M16 8 Q18 10 18 12 Q18 14 16 16"/>
+  <path fill="none" stroke="#2196F3" stroke-width="1.5" opacity="0.6" d="M5 5 Q3 8 3 12 Q3 16 5 19"/>
+  <path fill="none" stroke="#2196F3" stroke-width="1.5" opacity="0.6" d="M19 5 Q21 8 21 12 Q21 16 19 19"/>
+</svg>

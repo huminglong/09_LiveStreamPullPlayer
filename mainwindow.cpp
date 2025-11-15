@@ -24,6 +24,8 @@
 #include <QPushButton>
 #include <QSpinBox>
 #include <QVBoxLayout>
+#include <QIcon>
+#include <QPixmap>
 
  /**
   * @brief 构造主窗口并设置所有界面元素。
@@ -137,42 +139,53 @@ MainWindow::MainWindow(QWidget* parent)
 
     auto* urlLayout = new QHBoxLayout();
     urlLayout->setSpacing(10);
-    auto* urlLabel = new QLabel(QStringLiteral("流地址:"), central);
-    urlLabel->setObjectName("titleLabel");
+    auto* urlLabel = new QLabel(central);
+    urlLabel->setPixmap(QPixmap(":/icons/icons/stream.svg").scaled(20, 20, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    auto* urlTextLabel = new QLabel(QStringLiteral("流地址:"), central);
+    urlTextLabel->setObjectName("titleLabel");
     m_urlEdit = new QLineEdit(central);
     m_urlEdit->setPlaceholderText(QStringLiteral("输入 rtsp:// 或 rtmp:// 地址"));
     urlLayout->addWidget(urlLabel);
+    urlLayout->addWidget(urlTextLabel);
     urlLayout->addWidget(m_urlEdit, 1); // 让输入框占据剩余空间
 
     // Settings row: max retries and retry delay
     auto* settingsLayout = new QHBoxLayout();
     settingsLayout->setSpacing(10);
+    auto* retryIconLabel = new QLabel(central);
+    retryIconLabel->setPixmap(QPixmap(":/icons/icons/retry.svg").scaled(18, 18, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     auto* retryLabel = new QLabel(QStringLiteral("最大重试:"), central);
     retryLabel->setObjectName("titleLabel");
     m_retrySpin = new QSpinBox(central);
     m_retrySpin->setRange(0, 100);
     m_retrySpin->setValue(5);
+    auto* delayIconLabel = new QLabel(central);
+    delayIconLabel->setPixmap(QPixmap(":/icons/icons/timer.svg").scaled(18, 18, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     auto* delayLabel = new QLabel(QStringLiteral("重试间隔(ms):"), central);
     delayLabel->setObjectName("titleLabel");
     m_delaySpin = new QSpinBox(central);
     m_delaySpin->setRange(0, 60000);
     m_delaySpin->setSingleStep(100);
     m_delaySpin->setValue(2000);
+    settingsLayout->addWidget(retryIconLabel);
     settingsLayout->addWidget(retryLabel);
     settingsLayout->addWidget(m_retrySpin);
     settingsLayout->addSpacing(30); // 增加间距
+    settingsLayout->addWidget(delayIconLabel);
     settingsLayout->addWidget(delayLabel);
     settingsLayout->addWidget(m_delaySpin);
     settingsLayout->addStretch();
 
     auto* buttonLayout = new QHBoxLayout();
     buttonLayout->setSpacing(10);
-    m_startButton = new QPushButton(QStringLiteral("开始播放"), central);
+    m_startButton = new QPushButton(QIcon(":/icons/icons/play.svg"), QStringLiteral(" 开始播放"), central);
     m_startButton->setObjectName("startButton");
     m_startButton->setCursor(Qt::PointingHandCursor); // 设置鼠标悬停样式
-    m_stopButton = new QPushButton(QStringLiteral("停止播放"), central);
+    m_startButton->setIconSize(QSize(20, 20));
+    m_stopButton = new QPushButton(QIcon(":/icons/icons/stop.svg"), QStringLiteral(" 停止播放"), central);
     m_stopButton->setObjectName("stopButton");
     m_stopButton->setCursor(Qt::PointingHandCursor);
+    m_stopButton->setIconSize(QSize(20, 20));
     m_stopButton->setEnabled(false);
     buttonLayout->addWidget(m_startButton);
     buttonLayout->addWidget(m_stopButton);
@@ -204,13 +217,12 @@ MainWindow::MainWindow(QWidget* parent)
 
     // 设置窗口标题和属性
     setWindowTitle(QStringLiteral("直播流播放器"));
+    setWindowIcon(QIcon(":/icons/icons/app_icon.svg")); // 设置窗口图标
     setMinimumSize(800, 600); // 设置最小窗口尺寸
     resize(1080, 720); // 设置默认窗口尺寸
 
     // 设置窗口标志，避免图标重复显示
-    setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
-
-    // 窗口居中显示
+    setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);    // 窗口居中显示
     if (QWidget* parentWidget = qobject_cast<QWidget*>(parent)) {
         move(parentWidget->geometry().center() - rect().center());
     }

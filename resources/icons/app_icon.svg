@@ -1,0 +1,15 @@
+<!-- 应用程序主图标 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4CAF50;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2196F3;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="12" fill="url(#grad1)"/>
+  <circle cx="32" cy="32" r="8" fill="white"/>
+  <path fill="none" stroke="white" stroke-width="3" d="M20 20 Q14 26 14 32 Q14 38 20 44"/>
+  <path fill="none" stroke="white" stroke-width="3" d="M44 20 Q50 26 50 32 Q50 38 44 44"/>
+  <path fill="none" stroke="white" stroke-width="2" opacity="0.6" d="M12 12 Q6 20 6 32 Q6 44 12 52"/>
+  <path fill="none" stroke="white" stroke-width="2" opacity="0.6" d="M52 12 Q58 20 58 32 Q58 44 52 52"/>
+</svg>

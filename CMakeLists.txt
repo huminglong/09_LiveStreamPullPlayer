@@ -102,7 +102,8 @@ set(PROJECT_SOURCES
   packetqueue.cpp
   playerstats.h
   videowidget.cpp
-  videowidget.h)
+  videowidget.h
+  resources/resources.qrc)
 
 if(ANDROID)
   add_library(09_LiveStreamPullPlayer SHARED ${PROJECT_SOURCES})

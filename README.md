@@ -188,11 +188,6 @@ cmake --build . --config Debug
 ├── resources/                 # 资源文件
 │   ├── resources.qrc          # Qt 资源配置
 │   └── icons/                 # SVG 矢量图标
-├── doc/                       # 文档目录
-│   ├── 09_LiveStreamPullPlayer_PRD.md      # 产品需求文档
-│   ├── OPTIMIZATION_SUMMARY.md              # 优化总结
-│   ├── UI_OPTIMIZATION_SUMMARY.md           # UI 优化总结
-│   └── ICONS_GUIDE.md                       # 图标使用指南
 ├── build/                     # 构建输出目录 (gitignored)
 └── build_qt/                  # Qt Creator 构建目录 (gitignored)
 ```

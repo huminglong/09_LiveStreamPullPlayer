@@ -11,6 +11,8 @@
         "qlabel": "cpp",
         "qurlquery": "cpp",
         "qlineedit": "cpp",
-        "qvboxlayout": "cpp"
+        "qvboxlayout": "cpp",
+        "qspinbox": "cpp",
+        "algorithm": "cpp"
     }
 }

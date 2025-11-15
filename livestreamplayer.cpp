@@ -101,8 +101,8 @@ static inline int ff_channel_layout_default_compat(AVChannelLayout* layout, int 
  */
 LiveStreamPlayer::LiveStreamPlayer(QObject* parent)
     : QObject(parent),
-    m_videoQueue(kQueueMaxPacketsVideo, PacketQueue::OverflowPolicy::DropOldest),
-    m_audioQueue(kQueueMaxPacketsAudio, PacketQueue::OverflowPolicy::Block) {
+    m_videoQueue(kQueueMaxPacketsVideo, PacketQueue::OverflowPolicy::DropOldest),  // 视频队列：丢弃最旧帧以降低延迟
+    m_audioQueue(kQueueMaxPacketsAudio, PacketQueue::OverflowPolicy::Block) {      // 音频队列：阻塞等待以保证连续性
     qRegisterMetaType<PlayerStats>("PlayerStats");
 
     static std::once_flag initFlag;
@@ -113,6 +113,12 @@ LiveStreamPlayer::LiveStreamPlayer(QObject* parent)
     m_statsTimer->setTimerType(Qt::TimerType::CoarseTimer);
     connect(m_statsTimer, &QTimer::timeout, this, &LiveStreamPlayer::updateStats);
     m_statsTimer->start();
+
+    m_audioWriteTimer = new QTimer(this);
+    m_audioWriteTimer->setInterval(20);  // 每 20ms 尝试写入音频
+    m_audioWriteTimer->setTimerType(Qt::TimerType::PreciseTimer);
+    connect(m_audioWriteTimer, &QTimer::timeout, this, &LiveStreamPlayer::processAudioQueue);
+    m_audioWriteTimer->start();
 }
 
 /**
@@ -139,6 +145,7 @@ void LiveStreamPlayer::start(const QString& url) {
     m_currentUrl = sanitizeInputUrl(url);
     m_videoQueue.clear();
     m_audioQueue.clear();
+    m_videoQueue.resetDroppedCount();
     m_videoQueue.open();
     m_audioQueue.open();
     m_stopRequested.store(false);
@@ -157,6 +164,7 @@ void LiveStreamPlayer::start(const QString& url) {
  * @brief 停止所有线程、释放资源并重置状态。
  */
 void LiveStreamPlayer::stop() {
+    // 快速检查：如果所有线程已停止，直接返回
     if (!m_running.load(std::memory_order_acquire) &&
         !m_demuxThread.joinable() &&
         !m_videoThread.joinable() &&
@@ -164,6 +172,7 @@ void LiveStreamPlayer::stop() {
         return;
     }
 
+    // 防止重复停止：如果已在停止中，非 UI 线程等待完成
     if (m_stopInProgress.exchange(true, std::memory_order_acq_rel)) {
         if (thread() != QThread::currentThread()) {
             waitForShutdownCompletion();
@@ -171,8 +180,9 @@ void LiveStreamPlayer::stop() {
         return;
     }
 
+    // 启动异步停止任务，避免 UI 线程在 join 时阻塞
     auto shutdownTask = std::async(std::launch::async, [this]() {
-        stopInternal();
+        stopInternal();  // 真正的阻塞清理工作
         m_stopInProgress.store(false, std::memory_order_release);
         }).share();
 
@@ -181,12 +191,11 @@ void LiveStreamPlayer::stop() {
             m_shutdownFuture = shutdownTask;
         }
 
+        // 非 UI 线程需等待停止完成，UI 线程直接返回
         if (thread() != QThread::currentThread()) {
             shutdownTask.wait();
         }
-}
-
-void LiveStreamPlayer::stopInternal() {
+}void LiveStreamPlayer::stopInternal() {
     // Always perform full shutdown/cleanup even if m_running is already false
     m_running.store(false, std::memory_order_release);
     m_stopRequested.store(true, std::memory_order_release);
@@ -206,6 +215,11 @@ void LiveStreamPlayer::stopInternal() {
 
     clearQueues();
     closeStream();
+
+    {
+        std::lock_guard<std::mutex> lock(m_audioPendingMutex);
+        m_audioPendingQueue.clear();
+    }
 
     m_bitrateKbps.store(0.0, std::memory_order_release);
 
@@ -450,7 +464,7 @@ void LiveStreamPlayer::videoDecodeLoop() {
                     destData,
                     destLinesize);
 
-                frameImage = image;
+                frameImage = image;  // 直接赋值，利用 QImage 隐式共享避免深拷贝
                 av_frame_unref(frame);
                 break;
             }
@@ -975,35 +989,52 @@ void LiveStreamPlayer::teardownAudioOutput() {
 }
 
 /**
- * @brief 将 PCM 数据写入音频设备，并在不足时再次排队。
+ * @brief 将 PCM 数据加入待写队列，由定时器统一消费。
  * @param samples 可写音频数据。
  */
 void LiveStreamPlayer::emitAudioSamples(QByteArray samples) {
-    QMetaObject::invokeMethod(this, [this, samples]() {
-        if (!m_audioOutput || !m_audioDevice) {
-            return;
-        }
+    std::lock_guard<std::mutex> lock(m_audioPendingMutex);
+    m_audioPendingQueue.push_back(std::move(samples));
+}
 
-        const int totalSize = samples.size();
+/**
+ * @brief 定时器槽，从待写队列消费并分批写入音频设备，避免递归调用链。
+ */
+void LiveStreamPlayer::processAudioQueue() {
+    if (!m_audioOutput || !m_audioDevice) {
+        return;
+    }
+
+    // 一次性取出所有待写数据
+    std::deque<QByteArray> localQueue;
+    {
+        std::lock_guard<std::mutex> lock(m_audioPendingMutex);
+        localQueue.swap(m_audioPendingQueue);
+    }
+
+    for (const QByteArray& samples : localQueue) {
         int offset = 0;
+        const int totalSize = samples.size();
 
         while (offset < totalSize) {
-            if (m_audioOutput->bytesFree() <= 0) {
-                break;
+            const int freeBytes = m_audioOutput->bytesFree();
+            if (freeBytes <= 0) {
+                // 缓冲区满，剩余数据重新入队
+                if (offset < totalSize) {
+                    std::lock_guard<std::mutex> lock(m_audioPendingMutex);
+                    m_audioPendingQueue.push_front(samples.mid(offset));
+                }
+                return;
             }
 
             const qint64 written = m_audioDevice->write(samples.constData() + offset, totalSize - offset);
             if (written <= 0) {
-                break;
+                return;
             }
 
             offset += static_cast<int>(written);
         }
-
-        if (offset < totalSize) {
-            const QByteArray remainingSamples = samples.mid(offset);
-            QMetaObject::invokeMethod(this, [this, remainingSamples]() { emitAudioSamples(remainingSamples); }, Qt::QueuedConnection);
-        } }, Qt::QueuedConnection);
+    }
 }
 
 /**
@@ -1014,6 +1045,7 @@ void LiveStreamPlayer::updateStats() {
     stats.videoQueueSize = static_cast<int>(m_videoQueue.size());
     stats.audioQueueSize = static_cast<int>(m_audioQueue.size());
     stats.incomingBitrateKbps = m_bitrateKbps.load(std::memory_order_relaxed);
+    stats.droppedVideoFrames = static_cast<int>(m_videoQueue.droppedCount());
 
     double jitterVideo = 0.0;
     double jitterAudio = 0.0;

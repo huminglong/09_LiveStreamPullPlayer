@@ -16,10 +16,11 @@
   * @brief PlayerStats 描述当前缓冲、码率与抖动数据。
   */
 struct PlayerStats {
-    int videoQueueSize = 0;
-    int audioQueueSize = 0;
-    double incomingBitrateKbps = 0.0;
-    double jitterBufferMs = 0.0;
+  int videoQueueSize = 0;
+  int audioQueueSize = 0;
+  double incomingBitrateKbps = 0.0;
+  double jitterBufferMs = 0.0;
+  int droppedVideoFrames = 0;  // 累计丢弃的视频包数
 };
 
 Q_DECLARE_METATYPE(PlayerStats)

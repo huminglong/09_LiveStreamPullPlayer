@@ -97,6 +97,17 @@ public:
      */
     size_t size() const;
 
+    /**
+     * @brief 查询累计丢弃的包数量。
+     * @return 自上次重置以来丢弃的包数。
+     */
+    size_t droppedCount() const;
+
+    /**
+     * @brief 重置丢弃计数器。
+     */
+    void resetDroppedCount();
+
 private:
     mutable std::mutex m_mutex;
     std::condition_variable m_cvNotEmpty;
@@ -105,6 +116,7 @@ private:
     size_t m_maxSize;
     bool m_closed;
     OverflowPolicy m_policy;
+    size_t m_droppedCount;
 };
 
 #endif // PACKETQUEUE_H

@@ -19,7 +19,7 @@
   * @param maxPackets 队列容量。
   */
 PacketQueue::PacketQueue(size_t maxPackets, OverflowPolicy policy)
-    : m_maxSize(maxPackets), m_closed(false), m_policy(policy) {
+    : m_maxSize(maxPackets), m_closed(false), m_policy(policy), m_droppedCount(0) {
 }
 
 /**
@@ -42,6 +42,7 @@ void PacketQueue::setMaxSize(size_t maxPackets) {
             AVPacket dropped = m_queue.front();
             m_queue.pop_front();
             av_packet_unref(&dropped);
+            ++m_droppedCount;
         }
     }
     m_cvNotFull.notify_all();
@@ -67,6 +68,7 @@ bool PacketQueue::push(const AVPacket* packet, std::atomic_bool& running) {
             AVPacket dropped = m_queue.front();
             m_queue.pop_front();
             av_packet_unref(&dropped);
+            ++m_droppedCount;
         }
         if (m_closed || !running.load()) {
             return false;
@@ -156,4 +158,14 @@ bool PacketQueue::isOpen() const {
 size_t PacketQueue::size() const {
     std::lock_guard<std::mutex> lock(m_mutex);
     return m_queue.size();
+}
+
+size_t PacketQueue::droppedCount() const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_droppedCount;
+}
+
+void PacketQueue::resetDroppedCount() {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_droppedCount = 0;
 }

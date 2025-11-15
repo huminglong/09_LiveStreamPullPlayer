@@ -30,6 +30,7 @@ class QTimer;
 class QUrl;
 
 #include <atomic>
+#include <deque>
 #include <future>
 #include <mutex>
 #include <thread>
@@ -179,10 +180,15 @@ private:
     void teardownAudioOutput();
 
     /**
-     * @brief 将解码后的音频数据写入 QAudioOutput。
+     * @brief 将解码后的音频数据加入待写队列。
      * @param samples PCM 数据。
      */
     void emitAudioSamples(QByteArray samples);
+
+    /**
+     * @brief 定时器槽，从待写队列中消费并写入音频设备。
+     */
+    void processAudioQueue();
 
     /**
      * @brief 刷新统计数据并发射信号。
@@ -253,7 +259,10 @@ private:
 
     QAudioOutput* m_audioOutput = nullptr;
     QIODevice* m_audioDevice = nullptr;
-    QTimer* m_statsTimer = nullptr;
+    QTimer* m_statsTimer = nullptr;         // 统计信息刷新定时器
+    QTimer* m_audioWriteTimer = nullptr;    // 音频写入定时器，周期性消费待写队列
+    std::mutex m_audioPendingMutex;         // 保护音频待写队列的互斥锁
+    std::deque<QByteArray> m_audioPendingQueue;  // 音频待写队列，避免递归 invokeMethod
 
     std::atomic<double> m_bitrateKbps{ 0.0 };
     QString m_currentUrl;
@@ -262,9 +271,10 @@ private:
     std::atomic<int> m_maxReconnectAttempts{ 5 };
     std::atomic<int> m_reconnectDelayMs{ 2000 };
 
-    std::shared_future<void> m_shutdownFuture;
-    mutable std::mutex m_shutdownMutex;
-    std::atomic_bool m_stopInProgress{ false };
+    // 异步停止相关：避免 UI 线程在 join 时卡顿
+    std::shared_future<void> m_shutdownFuture;  // 异步停止任务的 future
+    mutable std::mutex m_shutdownMutex;         // 保护 m_shutdownFuture 的互斥锁
+    std::atomic_bool m_stopInProgress{ false }; // 标记是否正在执行停止
 };
 
 #endif // LIVESTREAMPLAYER_H

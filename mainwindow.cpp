@@ -72,7 +72,7 @@ MainWindow::MainWindow(QWidget* parent)
     buttonLayout->addStretch();
 
     m_statusLabel = new QLabel(QStringLiteral("Idle"), central);
-    m_statsLabel = new QLabel(QStringLiteral("Video queue: 0 | Audio queue: 0 | Bitrate: 0.0 kbps | Jitter: 0.0 ms"), central);
+    m_statsLabel = new QLabel(QStringLiteral("Video queue: 0 | Audio queue: 0 | Bitrate: 0.0 kbps | Jitter: 0.0 ms | Dropped: 0"), central);
 
     m_videoWidget = new VideoWidget(central);
 
@@ -165,11 +165,12 @@ void MainWindow::handleStatsUpdated(const PlayerStats& stats) {
         return;
     }
 
-    m_statsLabel->setText(QStringLiteral("Video queue: %1 | Audio queue: %2 | Bitrate: %3 kbps | Jitter: %4 ms")
+    m_statsLabel->setText(QStringLiteral("Video queue: %1 | Audio queue: %2 | Bitrate: %3 kbps | Jitter: %4 ms | Dropped: %5")
         .arg(stats.videoQueueSize)
         .arg(stats.audioQueueSize)
         .arg(QString::number(stats.incomingBitrateKbps, 'f', 1))
-        .arg(QString::number(stats.jitterBufferMs, 'f', 1)));
+        .arg(QString::number(stats.jitterBufferMs, 'f', 1))
+        .arg(stats.droppedVideoFrames));
 }
 
 /**

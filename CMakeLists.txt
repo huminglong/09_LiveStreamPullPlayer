@@ -108,7 +108,8 @@ set(PROJECT_SOURCES
 if(ANDROID)
   add_library(09_LiveStreamPullPlayer SHARED ${PROJECT_SOURCES})
 else()
-  add_executable(09_LiveStreamPullPlayer ${PROJECT_SOURCES})
+  # 添加 WIN32 标志以隐藏控制台窗口（Windows GUI 应用程序）
+  add_executable(09_LiveStreamPullPlayer WIN32 ${PROJECT_SOURCES})
 endif()
 
 target_include_directories(09_LiveStreamPullPlayer PRIVATE ${FFMPEG_INCLUDE_DIR})

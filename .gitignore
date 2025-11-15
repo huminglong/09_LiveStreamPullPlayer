@@ -1,4 +1,23 @@
 doc/
 build/
 build_qt/
+
+# Qt Creator 用户文件
 CMakeLists.txt.user
+
+# 部署目录（保留脚本，但忽略生成的二进制文件）
+deploy/LiveStreamPlayer_*/
+deploy/*.zip
+
+# IDE 和编辑器
+.vscode/
+.vs/
+*.user
+*.suo
+*.sdf
+*.opensdf
+
+# 临时文件
+*.tmp
+*.log
+*~

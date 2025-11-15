@@ -149,6 +149,7 @@ void LiveStreamPlayer::start(const QString& url) {
     m_videoQueue.open();
     m_audioQueue.open();
     m_stopRequested.store(false);
+    m_authFailure.store(false, std::memory_order_release);  // 重置认证失败标志
     m_running.store(true);
     m_bitrateKbps.store(0.0, std::memory_order_release);
 
@@ -225,12 +226,16 @@ void LiveStreamPlayer::stop() {
 
     updateStats();
 
+    // 在 UI 线程清理音频输出，但避免从异步线程使用 BlockingQueuedConnection 造成死锁
     if (thread() == QThread::currentThread()) {
         teardownAudioOutput();
     }
     else {
+        // 使用普通队列连接，避免异步线程等待 UI 线程处理
         QMetaObject::invokeMethod(this, &LiveStreamPlayer::teardownAudioOutput,
-            Qt::BlockingQueuedConnection);
+            Qt::QueuedConnection);
+        // 等待一小段时间确保消息处理
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 
     emit statusChanged(QStringLiteral("Stopped"));
@@ -269,9 +274,17 @@ void LiveStreamPlayer::requestStop() {
  */
 void LiveStreamPlayer::demuxLoop(QString url) {
     int retryCount = 0;
+    m_authFailure.store(false, std::memory_order_release);  // 重置认证失败标志
     while (m_running.load()) {
         if (!openStream(url)) {
             if (!m_running.load() || m_stopRequested.load()) {
+                break;
+            }
+            // 认证失败不应重试，直接停止
+            if (m_authFailure.load(std::memory_order_acquire)) {
+                emit statusChanged(QStringLiteral("认证失败，已停止"));
+                m_running.store(false);
+                m_stopRequested.store(true);
                 break;
             }
             // 连接失败计数并检查上限
@@ -606,7 +619,15 @@ bool LiveStreamPlayer::openStream(const QString& url) {
     int ret = avformat_open_input(&formatContext, url.toUtf8().constData(), nullptr, &options);
     av_dict_free(&options);
     if (ret < 0) {
-        emit errorOccurred(QStringLiteral("Failed to open stream: %1").arg(ffmpegErrorString(ret)));
+        const QString errorMsg = ffmpegErrorString(ret);
+        // 检测认证失败错误 (HTTP 401 Unauthorized, 403 Forbidden)
+        if (ret == AVERROR_HTTP_UNAUTHORIZED || ret == AVERROR_HTTP_FORBIDDEN) {
+            m_authFailure.store(true, std::memory_order_release);
+            emit errorOccurred(QStringLiteral("认证失败：%1\n请检查 RTSP 用户名和密码是否正确。").arg(errorMsg));
+        }
+        else {
+            emit errorOccurred(QStringLiteral("Failed to open stream: %1").arg(errorMsg));
+        }
         avformat_free_context(formatContext);
         return false;
     }

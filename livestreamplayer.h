@@ -239,6 +239,7 @@ private:
 
     std::atomic_bool m_running{ false };
     std::atomic_bool m_stopRequested{ false };
+    std::atomic_bool m_authFailure{ false };  // 认证失败标志，避免无意义重试
 
     PacketQueue m_videoQueue;
     PacketQueue m_audioQueue;

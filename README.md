@@ -47,19 +47,35 @@
 
 项目采用**多线程生产者-消费者**模式,通过数据包队列实现线程间解耦:
 
-```
-┌─────────────┐      ┌──────────────┐      ┌───────────┐
-│ 解封装线程   │ ───> │ 数据包队列    │ ───> │ 解码线程  │
-│ (Demux)    │      │ (Jitter      │      │ (Decode) │
-│            │      │  Buffer)     │      │          │
-└─────────────┘      └──────────────┘      └───────────┘
-      │                                           │
-      │ 网络 I/O                                  │ 音视频输出
-      ▼                                           ▼
-┌─────────────┐                          ┌───────────┐
-│ FFmpeg      │                          │ Qt Widget │
-│ Network     │                          │ QAudio    │
-└─────────────┘                          └───────────┘
+> 注: 下图使用 Mermaid 绘制。如果您在 GitHub 或其他平台上无法看到图形，请尝试启用 Mermaid 支持的渲染器或使用插件。
+
+```mermaid
+flowchart LR
+   %% 使用 Mermaid 绘制架构图
+   demux["解封装线程<br/>(Demux)"]
+   queue["数据包队列<br/>(Jitter Buffer)"]
+   decode["解码线程<br/>(Decode)"]
+   ffmpeg["FFmpeg<br/>Network"]
+   widget["Qt Widget<br/>QAudio"]
+
+   demux --> queue --> decode
+   demux -->|网络 I/O| ffmpeg
+   decode -->|音视频输出| widget
+
+   %% 可选：使用子图展示更清晰的模块边界
+   subgraph Demux_Block
+      demux
+   end
+   subgraph Queue_Block
+      queue
+   end
+   subgraph Decode_Block
+      decode
+   end
+
+   style demux fill:#e8f5ff,stroke:#3a9ad9,stroke-width:1px
+   style queue fill:#fff7e6,stroke:#f19700,stroke-width:1px
+   style decode fill:#e8ffe8,stroke:#27a54f,stroke-width:1px
 ```
 
 #### 关键模块

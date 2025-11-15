@@ -35,6 +35,11 @@ public slots:
      */
     void updateFrame(const QImage& frame);
 
+    /**
+     * @brief 清除当前帧并重绘为空白画面。
+     */
+    void clearFrame();
+
 protected:
     /**
      * @brief 绘制当前帧，保持纵横比。

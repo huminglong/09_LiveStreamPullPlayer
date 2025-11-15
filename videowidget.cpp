@@ -12,7 +12,9 @@
 #include "videowidget.h"
 
 #include <QPainter>
+#include <QPainterPath>
 #include <QMutexLocker>
+#include <QFont>
 
  /**
   * @brief 构造函数，设定背景和最小尺寸。
@@ -22,6 +24,15 @@ VideoWidget::VideoWidget(QWidget* parent)
     : QWidget(parent) {
     setAutoFillBackground(true);
     setMinimumSize(320, 240);
+
+    // 设置现代化样式：圆角边框和阴影效果
+    setStyleSheet(
+        "VideoWidget {"
+        "   background-color: #000000;"
+        "   border: 3px solid #4CAF50;"
+        "   border-radius: 10px;"
+        "}"
+    );
 }
 
 /**
@@ -37,12 +48,33 @@ void VideoWidget::updateFrame(const QImage& frame) {
 }
 
 /**
+ * @brief 清除当前帧并触发重绘。
+ */
+void VideoWidget::clearFrame() {
+    {
+        QMutexLocker locker(&m_mutex);
+        m_frame = QImage(); // 清空图像
+    }
+    update();
+}
+
+/**
  * @brief 以等比例缩放方式绘制当前帧。
  * @param event Qt 绘制事件。
  */
 void VideoWidget::paintEvent(QPaintEvent* event) {
     Q_UNUSED(event);
     QPainter painter(this);
+
+    // 启用抗锯齿以获得更平滑的渲染效果
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setRenderHint(QPainter::SmoothPixmapTransform);
+
+    // 创建圆角矩形裁剪区域
+    QPainterPath path;
+    path.addRoundedRect(rect(), 10, 10);
+    painter.setClipPath(path);
+
     painter.fillRect(rect(), Qt::black);
 
     QImage frameCopy;
@@ -52,6 +84,12 @@ void VideoWidget::paintEvent(QPaintEvent* event) {
     }
 
     if (frameCopy.isNull()) {
+        // 如果没有视频帧，显示提示文字
+        painter.setPen(QColor(150, 150, 150));
+        QFont font = painter.font();
+        font.setPointSize(14);
+        painter.setFont(font);
+        painter.drawText(rect(), Qt::AlignCenter, QStringLiteral("🎬 等待视频流..."));
         return;
     }
 

@@ -137,7 +137,7 @@ MainWindow::MainWindow(QWidget* parent)
 
     auto* urlLayout = new QHBoxLayout();
     urlLayout->setSpacing(10);
-    auto* urlLabel = new QLabel(QStringLiteral("📡 Stream URL:"), central);
+    auto* urlLabel = new QLabel(QStringLiteral("流地址:"), central);
     urlLabel->setObjectName("titleLabel");
     m_urlEdit = new QLineEdit(central);
     m_urlEdit->setPlaceholderText(QStringLiteral("输入 rtsp:// 或 rtmp:// 地址"));
@@ -147,12 +147,12 @@ MainWindow::MainWindow(QWidget* parent)
     // Settings row: max retries and retry delay
     auto* settingsLayout = new QHBoxLayout();
     settingsLayout->setSpacing(10);
-    auto* retryLabel = new QLabel(QStringLiteral("🔄 最大重试:"), central);
+    auto* retryLabel = new QLabel(QStringLiteral("最大重试:"), central);
     retryLabel->setObjectName("titleLabel");
     m_retrySpin = new QSpinBox(central);
     m_retrySpin->setRange(0, 100);
     m_retrySpin->setValue(5);
-    auto* delayLabel = new QLabel(QStringLiteral("⏱️ 重试间隔(ms):"), central);
+    auto* delayLabel = new QLabel(QStringLiteral("重试间隔(ms):"), central);
     delayLabel->setObjectName("titleLabel");
     m_delaySpin = new QSpinBox(central);
     m_delaySpin->setRange(0, 60000);
@@ -167,10 +167,10 @@ MainWindow::MainWindow(QWidget* parent)
 
     auto* buttonLayout = new QHBoxLayout();
     buttonLayout->setSpacing(10);
-    m_startButton = new QPushButton(QStringLiteral("▶️ 开始播放"), central);
+    m_startButton = new QPushButton(QStringLiteral("开始播放"), central);
     m_startButton->setObjectName("startButton");
     m_startButton->setCursor(Qt::PointingHandCursor); // 设置鼠标悬停样式
-    m_stopButton = new QPushButton(QStringLiteral("⏹️ 停止播放"), central);
+    m_stopButton = new QPushButton(QStringLiteral("停止播放"), central);
     m_stopButton->setObjectName("stopButton");
     m_stopButton->setCursor(Qt::PointingHandCursor);
     m_stopButton->setEnabled(false);
@@ -178,10 +178,10 @@ MainWindow::MainWindow(QWidget* parent)
     buttonLayout->addWidget(m_stopButton);
     buttonLayout->addStretch();
 
-    m_statusLabel = new QLabel(QStringLiteral("💤 空闲中"), central);
+    m_statusLabel = new QLabel(QStringLiteral("空闲中"), central);
     m_statusLabel->setObjectName("statusLabel");
     m_statusLabel->setAlignment(Qt::AlignCenter); // 居中对齐
-    m_statsLabel = new QLabel(QStringLiteral("📊 视频队列: 0 | 音频队列: 0 | 码率: 0.0 kbps | 抖动: 0.0 ms | 丢帧: 0"), central);
+    m_statsLabel = new QLabel(QStringLiteral("视频队列: 0 | 音频队列: 0 | 码率: 0.0 kbps | 抖动: 0.0 ms | 丢帧: 0"), central);
     m_statsLabel->setObjectName("statsLabel");
     m_statsLabel->setAlignment(Qt::AlignCenter);
 
@@ -206,7 +206,7 @@ MainWindow::MainWindow(QWidget* parent)
     setWindowTitle(QStringLiteral("直播流播放器"));
     setMinimumSize(800, 600); // 设置最小窗口尺寸
     resize(1080, 720); // 设置默认窗口尺寸
-    
+
     // 设置窗口标志，避免图标重复显示
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
 
@@ -235,7 +235,7 @@ void MainWindow::handleStart() {
 
     const QString url = m_urlEdit->text().trimmed();
     if (url.isEmpty()) {
-        QMessageBox::warning(this, QStringLiteral("⚠️ 缺少URL"), QStringLiteral("请输入有效的 RTSP 或 RTMP 地址"));
+        QMessageBox::warning(this, QStringLiteral("缺少URL"), QStringLiteral("请输入有效的 RTSP 或 RTMP 地址"));
         return;
     }
 
@@ -265,7 +265,7 @@ void MainWindow::handleStop() {
     }
 
     updateControlsForRunning(false);
-    m_statusLabel->setText(QStringLiteral("⏹️ 已停止"));
+    m_statusLabel->setText(QStringLiteral("已停止"));
     m_statusLabel->setStyleSheet("background-color: white; border: 2px solid #ddd; border-radius: 6px; padding: 6px 12px; font-weight: bold; color: #F44336;");
 }
 
@@ -278,28 +278,28 @@ void MainWindow::handleStatusChanged(const QString& statusText) {
         return;
     }
 
-    // 根据状态添加图标和颜色
+    // 根据状态设置文本和颜色
     QString displayText;
     QString colorStyle;
     if (statusText.contains(QStringLiteral("Playing"), Qt::CaseInsensitive)) {
-        displayText = QStringLiteral("▶️ 播放中");
+        displayText = QStringLiteral("播放中");
         colorStyle = "color: #4CAF50; font-weight: bold;";
         updateControlsForRunning(true);
     }
     else if (statusText.contains(QStringLiteral("Connecting"), Qt::CaseInsensitive)) {
-        displayText = QStringLiteral("🔗 连接中...");
+        displayText = QStringLiteral("连接中...");
         colorStyle = "color: #FF9800; font-weight: bold;";
     }
     else if (statusText.contains(QStringLiteral("Stopped"), Qt::CaseInsensitive)) {
-        displayText = QStringLiteral("⏹️ 已停止");
+        displayText = QStringLiteral("已停止");
         colorStyle = "color: #F44336; font-weight: bold;";
     }
     else if (statusText.contains(QStringLiteral("Error"), Qt::CaseInsensitive)) {
-        displayText = QStringLiteral("❌ 错误");
+        displayText = QStringLiteral("错误");
         colorStyle = "color: #F44336; font-weight: bold;";
     }
     else if (statusText.contains(QStringLiteral("Idle"), Qt::CaseInsensitive)) {
-        displayText = QStringLiteral("💤 空闲中");
+        displayText = QStringLiteral("空闲中");
         colorStyle = "color: #2196F3; font-weight: bold;";
     }
     else {
@@ -321,7 +321,7 @@ void MainWindow::handleStatsUpdated(const PlayerStats& stats) {
         return;
     }
 
-    m_statsLabel->setText(QStringLiteral("📊 视频队列: %1 | 🔊 音频队列: %2 | 📈 码率: %3 kbps | ⏱️ 抖动: %4 ms | ⚠️ 丢帧: %5")
+    m_statsLabel->setText(QStringLiteral("视频队列: %1 | 音频队列: %2 | 码率: %3 kbps | 抖动: %4 ms | 丢帧: %5")
         .arg(stats.videoQueueSize)
         .arg(stats.audioQueueSize)
         .arg(QString::number(stats.incomingBitrateKbps, 'f', 1))
@@ -338,9 +338,9 @@ void MainWindow::handleError(const QString& message) {
         return;
     }
 
-    QMessageBox::warning(this, QStringLiteral("❌ 播放错误"), message);
+    QMessageBox::warning(this, QStringLiteral("播放错误"), message);
     updateControlsForRunning(false);
-    m_statusLabel->setText(QStringLiteral("❌ 错误"));
+    m_statusLabel->setText(QStringLiteral("错误"));
     m_statusLabel->setStyleSheet("background-color: white; border: 2px solid #ddd; border-radius: 6px; padding: 6px 12px; font-weight: bold; color: #F44336;");
 }
 

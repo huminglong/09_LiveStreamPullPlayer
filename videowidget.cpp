@@ -89,7 +89,7 @@ void VideoWidget::paintEvent(QPaintEvent* event) {
         QFont font = painter.font();
         font.setPointSize(14);
         painter.setFont(font);
-        painter.drawText(rect(), Qt::AlignCenter, QStringLiteral("🎬 等待视频流..."));
+        painter.drawText(rect(), Qt::AlignCenter, QStringLiteral("等待视频流..."));
         return;
     }
 

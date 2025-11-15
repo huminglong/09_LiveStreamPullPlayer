@@ -11,5 +11,7 @@
         <file>icons/jitter.svg</file>
         <file>icons/warning.svg</file>
         <file>icons/app_icon.svg</file>
+        <file>icons/arrow-up.svg</file>
+        <file>icons/arrow-down.svg</file>
     </qresource>
 </RCC>
